@@ -1,48 +1,75 @@
 import ops
 import iopc
 
-def MAIN_ENV(args):
+pkg_path = ""
+output_dir = ""
+arch = ""
+src_lib_dir = ""
+src_include_dir = ""
+dst_include_dir = ""
+
+def set_global(args):
+    global pkg_path
+    global output_dir
+    global arch
+    global src_lib_dir
+    global src_include_dir
+    global dst_include_dir
     pkg_path = args["pkg_path"]
     output_dir = args["output_path"]
+    arch = ops.getEnv("ARCH_ALT")
+    if arch == "armhf":
+        src_lib_dir = iopc.getBaseRootFile("/usr/lib/arm-linux-gnueabihf")
+    elif arch == "armel":
+        src_lib_dir = iopc.getBaseRootFile("/usr/lib/arm-linux-gnueabi")
+    else:
+        sys.exit(1)
+
+    src_include_dir = iopc.getBaseRootFile("/usr/include")
+    dst_include_dir = ops.path_join("include",args["pkg_name"])
+
+
+def MAIN_ENV(args):
+    set_global(args)
     return False
 
 def MAIN_EXTRACT(args):
-    pkg_dir = args["pkg_path"]
-    output_dir = args["output_path"]
+    set_global(args)
 
-    src_lib = iopc.getBaseRootFile("/usr/lib/arm-linux-gnueabihf/libdb-5.3.so")
-    ops.copyto(src_lib, output_dir)
-
+    ops.copyto(ops.path_join(src_lib, "libdb-5.3.so"), output_dir)
     ops.ln(output_dir, "libdb-5.3.so", "libdb.so")
     return False
 
+def MAIN_PATCH(args, patch_group_name):
+    set_global(args)
+    for patch in iopc.get_patch_list(pkg_path, patch_group_name):
+        if iopc.apply_patch(build_dir, patch):
+            continue
+        else:
+            sys.exit(1)
+
+    return True
+
 def MAIN_CONFIGURE(args):
-    output_dir = args["output_path"]
+    set_global(args)
     return False
 
 def MAIN_BUILD(args):
-    output_dir = args["output_path"]
+    set_global(args)
     return False
 
 def MAIN_INSTALL(args):
-    output_dir = args["output_path"]
+    set_global(args)
 
-    dst_includes = ops.path_join("include",args["pkg_name"])
-
-    src_includes = iopc.getBaseRootFile("/usr/include/db.h")
-    iopc.installBin(args["pkg_name"], src_includes, dst_includes)
-
-    src_includes = iopc.getBaseRootFile("/usr/include/db_185.h")
-    iopc.installBin(args["pkg_name"], src_includes, dst_includes)
-
-    src_lib = ops.path_join(output_dir, ".")
-    iopc.installBin(args["pkg_name"], src_lib, "usr/lib") 
+    iopc.installBin(args["pkg_name"], ops.path_join(src_include_dir, "db.h"), dst_include_dir)
+    iopc.installBin(args["pkg_name"], ops.path_join(src_include_dir, "db_185.h"), dst_include_dir)
+    iopc.installBin(args["pkg_name"], ops.path_join(output_dir, "."), "usr/lib") 
     return False
 
 def MAIN_CLEAN_BUILD(args):
-    output_dir = args["output_path"]
+    set_global(args)
     return False
 
 def MAIN(args):
-    output_dir = args["output_path"]
+    set_global(args)
 
